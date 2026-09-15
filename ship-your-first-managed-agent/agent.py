@@ -23,7 +23,21 @@ client = anthropic.Anthropic()
 #       unique per org — suffix it with uuid like setup_environment() does.
 @st.cache_resource
 def setup_agent() -> str:
-    raise NotImplementedError
+    # display_title must be unique per organization, so suffix it the same way
+    # setup_environment() does — a second run, or a second person on the same
+    # workspace, otherwise fails with "Skill cannot reuse an existing display_title".
+    skill = client.beta.skills.create(
+        display_title=f"Incident Triage Runbook {uuid.uuid4().hex[:6]}",
+        files=files_from_dir("incident-triage-runbook"),
+    )
+    agent = client.beta.agents.create(
+        name="SRE Agent",
+        model="claude-opus-4-8",
+        system=SYSTEM,
+        tools=TOOLS,
+        skills=[{"type": "custom", "skill_id": skill.id, "version": "latest"}],
+    )
+    return agent.id
 
 
 # ── 2. Environment ────────────────────────────────────────────────────────
